@@ -5,17 +5,17 @@
 Then open the MCP Inspector (npx @modelcontextprotocol/inspector), choose
 transport "Streamable HTTP" and connect to http://127.0.0.1:8000/mcp.
 
-Note: in MCP SDK 2.x, FastMCP was renamed MCPServer. The decorator API is the same.
+Pinned to MCP SDK 1.x (FastMCP): langchain-mcp-adapters does not support 2.x yet.
 """
 
 import argparse
 
-from mcp.server.mcpserver import MCPServer
+from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel
 
 from common.db import connect
 
-mcp = MCPServer(
+mcp = FastMCP(
     "study-startup-hello",
     instructions="Read-only access to the study start-up events table.",
 )
@@ -50,7 +50,8 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
     print(f"MCP server on http://127.0.0.1:{args.port}/mcp  (Ctrl+C to stop)")
-    mcp.run("streamable-http", host="127.0.0.1", port=args.port)
+    mcp.settings.port = args.port
+    mcp.run("streamable-http")
 
 
 if __name__ == "__main__":

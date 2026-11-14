@@ -5,7 +5,8 @@ exercises the same schemas, validation and error handling an agent sees.
 """
 
 import pytest
-from mcp import Client
+from pydantic import AnyUrl
+from mcp.shared.memory import create_connected_server_and_client_session as mcp_client
 
 from common.db import connect
 from generator.live import generate_one, make_context
@@ -35,17 +36,17 @@ def ctx():
 
 async def call(tool: str, **args) -> dict:
     """Call a tool and return its structured result; fail the test on a tool error."""
-    async with Client(mcp) as client:
+    async with mcp_client(mcp) as client:
         result = await client.call_tool(tool, args)
-    assert not result.is_error, result.content[0].text
-    return result.structured_content
+    assert not result.isError, result.content[0].text
+    return result.structuredContent
 
 
 async def call_error(tool: str, **args) -> str:
     """Call a tool that should fail and return its error message."""
-    async with Client(mcp) as client:
+    async with mcp_client(mcp) as client:
         result = await client.call_tool(tool, args)
-    assert result.is_error, f"{tool} should have failed but returned {result.structured_content}"
+    assert result.isError, f"{tool} should have failed but returned {result.structuredContent}"
     return result.content[0].text
 
 
@@ -68,10 +69,10 @@ def doc_of_type(site_id: str, doc_type: str) -> dict:
 
 @pytest.mark.anyio
 async def test_server_exposes_all_tools_and_resources_and_nothing_deletes():
-    async with Client(mcp) as client:
+    async with mcp_client(mcp) as client:
         names = {t.name for t in (await client.list_tools()).tools}
         uris = {str(r.uri) for r in (await client.list_resources()).resources}
-        rules = await client.read_resource("study://rules")
+        rules = await client.read_resource(AnyUrl("study://rules"))
     assert names == READ_TOOLS | WRITE_TOOLS
     assert not any("delete" in n or "remove" in n for n in names)
     assert uris == {"study://rules", "study://reference", "study://schema"}

@@ -9,8 +9,9 @@ Rules enforced here, whoever the caller is:
   - every write tool call is recorded in agent_actions, in the same
     transaction as the change it makes.
 
-ToolError matters: in MCP SDK 2.x any other exception is treated as a crash
-and the client only sees "Error executing tool <name>".
+Validation raises ToolError, so the caller gets the message as an error
+result. (In MCP SDK 2.x only ToolError messages reach the client at all.)
+Pinned to MCP SDK 1.x (FastMCP): langchain-mcp-adapters does not support 2.x yet.
 """
 
 import argparse
@@ -19,15 +20,15 @@ import re
 from datetime import date
 from typing import Any
 
-from mcp.server.mcpserver import MCPServer
-from mcp.server.mcpserver.exceptions import ToolError
+from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.exceptions import ToolError
 
 from common.config import CONFIG_DIR, load_config
 from common.db import SCHEMA, connect, now
 from common.domain import DOC_STATUSES, DOC_TYPES, MILESTONE_TYPES, SITE_STATUSES, STAFF_ROLES
 from common.readiness import missing_for_activation
 
-mcp = MCPServer(
+mcp = FastMCP(
     "study-startup",
     instructions=(
         "Study start-up data: sites, regulatory documents, milestones, staff and the "
@@ -519,7 +520,8 @@ def main() -> None:
         mcp.run("stdio")
     else:
         print(f"MCP server on http://127.0.0.1:{args.port}/mcp  (Ctrl+C to stop)")
-        mcp.run("streamable-http", host="127.0.0.1", port=args.port)
+        mcp.settings.port = args.port
+        mcp.run("streamable-http")
 
 
 if __name__ == "__main__":
