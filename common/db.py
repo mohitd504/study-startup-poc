@@ -3,20 +3,39 @@
 Run `python -m common.db` to create data/study.db with all tables.
 """
 
+import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "study.db"
+# Override with the STUDY_DB_PATH environment variable (the tests use their own file).
+DB_PATH = Path(
+    os.environ.get("STUDY_DB_PATH")
+    or Path(__file__).resolve().parent.parent / "data" / "study.db"
+)
 
 
 def now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
+class _ClosingConnection(sqlite3.Connection):
+    """`with connect() as conn:` commits (or rolls back) and then closes.
+
+    Plain sqlite3 only commits, leaving the file open; on Windows that blocks
+    deleting the database for a reset.
+    """
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            return super().__exit__(exc_type, exc, tb)
+        finally:
+            self.close()
+
+
 def connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, factory=_ClosingConnection)
     conn.row_factory = sqlite3.Row  # rows behave like dicts
     conn.execute("PRAGMA journal_mode=WAL")  # generator and MCP server can share the DB
     conn.execute("PRAGMA busy_timeout=5000")
