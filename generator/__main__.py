@@ -1,7 +1,7 @@
 """Command line for the data generator.
 
     python -m generator seed [--reset]           create the initial data set
-    python -m generator run [--count N]          generate events until Ctrl+C
+    python -m generator run [--minutes M]        generate events until Ctrl+C (or M minutes)
     python -m generator inject EVENT [options]   create one specific event now
     python -m generator status                   row counts and site statuses
     python -m generator recent [-n 10]           latest events
@@ -82,6 +82,7 @@ def main() -> None:
     p_run = sub.add_parser("run", help="generate events until Ctrl+C")
     p_run.add_argument("--count", type=int, help="stop after N events")
     p_run.add_argument("--interval", type=float, help="fixed seconds between events")
+    p_run.add_argument("--minutes", type=float, help="stop after this many minutes")
 
     p_inject = sub.add_parser("inject", help="create one specific event now")
     p_inject.add_argument("event_type", choices=sorted(ACTIONS))
@@ -104,7 +105,7 @@ def main() -> None:
     if args.command == "seed":
         run_seed(reset=args.reset)
     elif args.command == "run":
-        run(count=args.count, interval=args.interval)
+        run(count=args.count, interval=args.interval, minutes=args.minutes)
     elif args.command == "inject":
         inject(args.event_type, site_id=args.site, days=args.days, rejections=args.rejections,
                variant=args.variant, complete=args.complete)
