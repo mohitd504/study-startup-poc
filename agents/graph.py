@@ -5,7 +5,7 @@ r"""The LangGraph workflow that handles one event.
                                                          \-> unhandled -------/
 
 - State: the event, the chosen route, and the specialist's result.
-- route (supervisor): looks the event type up in the routing table from rules.yaml.
+- route (supervisor): looks the event type up in the routing table (from study://rules).
 - specialist nodes: pull context, decide and act through MCP tools.
 - finalize (supervisor): makes sure a decision was logged, then marks the
   event processed. mark_event_processed only succeeds once per event.
@@ -16,7 +16,6 @@ from typing import Awaitable, Callable, TypedDict
 from langgraph.graph import END, START, StateGraph
 
 from agents.mcp_tools import McpTools
-from common.config import load_config
 
 SUPERVISOR = "supervisor"
 
@@ -31,10 +30,10 @@ class EventState(TypedDict, total=False):
     result: dict
 
 
-def build_graph(specialists: dict[str, Specialist], tools: McpTools):
+def build_graph(specialists: dict[str, Specialist], tools: McpTools, routing: dict[str, list[str]]):
     route_by_type = {
         event_type: agent
-        for agent, event_types in load_config("rules")["routing"].items()
+        for agent, event_types in routing.items()
         for event_type in event_types
     }
 

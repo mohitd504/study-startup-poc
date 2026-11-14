@@ -23,10 +23,10 @@ class ConnectionLost(Exception):
 
 
 class Supervisor:
-    def __init__(self, tools: McpTools, specialists: dict, settings: dict,
+    def __init__(self, tools: McpTools, specialists: dict, settings: dict, routing: dict,
                  prices: dict | None = None, stats: dict | None = None):
         self.tools = tools
-        self.graph = build_graph(specialists, tools)
+        self.graph = build_graph(specialists, tools, routing)
         self.settings = settings
         self.prices = prices  # USD per 1M tokens, for the cost estimate (OpenAI mode)
         self.in_flight: set[int] = set()

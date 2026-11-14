@@ -1,4 +1,6 @@
-"""Connects the agent layer to the MCP server. Agents never open the database.
+"""Connects the agent layer to the MCP server. Agents never open the database
+or the config files: data comes from MCP tools, rules and reference data from
+MCP resources.
 
 Tools come from langchain-mcp-adapters as LangChain tools. LLM agents use
 them directly; rules-mode code uses `McpTools.call`, which returns a tool's
@@ -9,9 +11,12 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
+import yaml
 from langchain_core.tools import BaseTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.tools import load_mcp_tools
+from mcp import ClientSession
+from pydantic import AnyUrl
 
 
 class ToolCallError(Exception):
@@ -19,8 +24,17 @@ class ToolCallError(Exception):
 
 
 class McpTools:
-    def __init__(self, tools: list[BaseTool]):
+    def __init__(self, tools: list[BaseTool], session: ClientSession | None = None):
         self.by_name = {t.name: t for t in tools}
+        self.session = session
+
+    async def read_yaml(self, uri: str) -> dict:
+        """Read a YAML resource from the server, e.g. study://rules."""
+        result = await self.session.read_resource(AnyUrl(uri))
+        return yaml.safe_load(result.contents[0].text)
+
+    async def rules(self) -> dict:
+        return await self.read_yaml("study://rules")
 
     def subset(self, names: list[str]) -> list[BaseTool]:
         return [self.by_name[n] for n in names]
@@ -52,4 +66,4 @@ async def open_tools(url: str) -> AsyncIterator[McpTools]:
     """
     client = MultiServerMCPClient({"study": {"url": url, "transport": "streamable_http"}})
     async with client.session("study") as session:
-        yield McpTools(await load_mcp_tools(session))
+        yield McpTools(await load_mcp_tools(session), session)

@@ -19,20 +19,26 @@ RECONNECT_SECONDS = 3
 
 
 def specialist_factory(args, settings: dict):
-    """Return (make_specialists(tools), label, prices) for the chosen mode."""
+    """Return (async make_specialists(tools), label, prices) for the chosen mode."""
     if args.mode == "rules":
         from agents.rules_engine import RULE_SPECIALISTS
-        return (lambda tools: dict(RULE_SPECIALISTS)), "rules (no LLM)", None
+
+        async def make_rule_specialists(tools):
+            return dict(RULE_SPECIALISTS)
+        return make_rule_specialists, "rules (no LLM)", None
 
     if not os.environ.get("OPENAI_API_KEY"):
         raise SystemExit("OPENAI_API_KEY is not set. Add it to the .env file in the project folder.")
-    from agents.llm_agents import SPECIALISTS, LlmSpecialist, build_model
+    from agents.llm_agents import build_model, build_specialists
     model_name = args.model or os.environ.get("AGENT_MODEL") or settings["openai"]["model"]
     model = build_model(model_name)
     prices = settings["openai"]["prices"].get(model_name)
     label = f"openai ({model_name})" + ("" if prices else ", no price on file so cost not estimated")
+
     # LLM agents are bound to the tools of one MCP session, so rebuild them per session.
-    return (lambda tools: {name: LlmSpecialist(name, model, tools) for name in SPECIALISTS}), label, prices
+    async def make_llm_specialists(tools):
+        return await build_specialists(model, tools)
+    return make_llm_specialists, label, prices
 
 
 async def main_async(args) -> None:
@@ -47,14 +53,15 @@ async def main_async(args) -> None:
         while True:
             try:
                 async with open_tools(url) as tools:
-                    specialists = make_specialists(tools)
+                    specialists = await make_specialists(tools)
+                    routing = (await tools.rules())["routing"]
                     if not connected_once:
                         print(f"Agents running in {label} mode against {url}")
                         print(f"Specialists: {', '.join(specialists)}. Press Ctrl+C to stop.\n")
                     else:
                         print("[supervisor] reconnected to the MCP server")
                     connected_once = True
-                    await Supervisor(tools, specialists, settings, prices, stats).run(once=args.once)
+                    await Supervisor(tools, specialists, settings, routing, prices, stats).run(once=args.once)
                     return
             except ConnectionLost:
                 print(f"[supervisor] lost the MCP server; reconnecting every {RECONNECT_SECONDS}s")
