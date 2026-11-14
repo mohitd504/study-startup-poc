@@ -3,6 +3,45 @@
 # Fixed seed makes the seeded data reproducible. Set to null for new data each reset.
 random_seed: 42
 
+# Seconds between generated events. A random value in [min, max] is used each tick.
+interval_seconds:
+  min: 3
+  max: 5
+
+# Weighted random choice of the next event. Higher weight = more common.
+event_weights:
+  document_submitted: 20
+  document_rejected: 10
+  document_expiring: 10
+  approval_received: 8
+  milestone_delayed: 10
+  contract_signed: 6
+  record_data_issue: 10
+  site_ready_check: 8
+  document_expired: 4
+  staff_training_expired: 4
+
+# Deliberate problem cases, so the agents have something to catch. Ranges
+# straddle the thresholds in rules.yaml so both sides of each rule fire.
+problems:
+  expiring_days_range: [3, 60]       # notify at 30 days or fewer, log only above
+  expired_days_ago_range: [1, 30]
+  delay_days_range: [1, 21]          # notify under 7 days late, flag at 7+
+  training_expired_days_ago_range: [1, 30]
+  # Chance that a site_ready_check first makes the site genuinely complete,
+  # so the agent can auto-resolve it to Ready To Activate.
+  ready_check_complete_probability: 0.35
+  # Chance that a rejection lands on a document already rejected twice,
+  # which reaches the 3rd-rejection flag rule.
+  repeat_rejection_probability: 0.3
+  # Kinds of record_data_issue. Inferable ones can be auto-fixed; the others
+  # need the data manager.
+  data_issue_variants:
+    site_country_blank: 4        # inferable from the city in the site name
+    milestone_date_malformed: 3  # inferable: "2026/11/13" -> "2026-11-13"
+    milestone_date_garbage: 2    # not inferable: "TBD"
+    staff_name_blank: 1          # not inferable
+
 seed:
   studies: 2               # 1 to 3
   sites_total: 20          # spread across the studies
