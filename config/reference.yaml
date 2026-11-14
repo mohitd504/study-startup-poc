@@ -1,0 +1,31 @@
+# Reference data shared by the generator (to name sites) and the agents
+# (to infer a missing country from the city in a site's name).
+
+city_country:
+  Madrid: Spain
+  Barcelona: Spain
+  Lyon: France
+  Paris: France
+  Munich: Germany
+  Hamburg: Germany
+  Milan: Italy
+  Rome: Italy
+  Warsaw: Poland
+  Krakow: Poland
+  Boston: United States
+  Houston: United States
+  Toronto: Canada
+  Montreal: Canada
+  Manchester: United Kingdom
+  Leeds: United Kingdom
+  Bengaluru: India
+  Pune: India
+  Melbourne: Australia
+  Sydney: Australia
+
+site_name_suffixes:
+  - University Hospital
+  - General Hospital
+  - Medical Centre
+  - Clinical Research Institute
+  - Cancer Centre

@@ -1,0 +1,25 @@
+# Settings for the data generator (python -m generator ...).
+
+# Fixed seed makes the seeded data reproducible. Set to null for new data each reset.
+random_seed: 42
+
+seed:
+  studies: 2               # 1 to 3
+  sites_total: 20          # spread across the studies
+  staff_per_site: [2, 4]   # min, max (includes the Principal Investigator)
+
+  # Starting status mix for seeded sites (weights). Later statuses are reached
+  # through events, so the agents have something to move forward.
+  site_status_weights:
+    Identified: 2
+    Selected: 4
+    Docs In Progress: 8
+    Contract In Review: 6
+
+rejection_reasons:
+  - Signature missing on page 2
+  - Document is out of date
+  - Wrong protocol version referenced
+  - Illegible scan
+  - Missing translation into local language
+  - PI name does not match the site record
