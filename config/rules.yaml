@@ -1,0 +1,118 @@
+# Decision rules (section 9 of the brief), read by the MCP server for
+# validation and served to agents as the study://rules resource.
+# Change thresholds here, not in prompts or code.
+
+severities: [low, medium, high]
+
+recipient_roles:
+  - site_coordinator
+  - study_manager
+  - regulatory_specialist
+  - data_manager
+  - clinical_operations_lead
+
+# action_type values an agent may record with log_agent_action.
+decision_types: [auto_resolve, notify, flag, log_only, error]
+
+# Which specialist agent handles which event type.
+routing:
+  document_agent:
+    - document_submitted
+    - document_rejected
+    - document_expiring
+    - document_expired
+  milestone_site_agent:
+    - milestone_delayed
+    - approval_received
+    - contract_signed
+    - site_ready_check
+  data_quality_agent:
+    - record_data_issue
+    - staff_training_expired
+
+rules:
+  document_submitted:
+    summary: Log only. The document is now waiting for review; nobody needs a notification.
+
+  document_expiring:
+    summary: >-
+      If the document expires in 30 days or fewer, notify the regulatory specialist
+      (low). If more than 30 days remain, log only.
+    notify_within_days: 30
+    notify: {severity: low, recipient_role: regulatory_specialist}
+
+  document_expired:
+    summary: >-
+      Always flag to the regulatory specialist (high) and set the document status
+      to Expired.
+    flag: {severity: high, recipient_role: regulatory_specialist}
+    set_document_status: Expired
+
+  document_rejected:
+    summary: >-
+      Fewer than 3 rejections on this document: notify the site coordinator (low)
+      with the reviewer's reason. At the 3rd rejection or more: flag to the study
+      manager (high).
+    flag_at_rejection_count: 3
+    notify: {severity: low, recipient_role: site_coordinator}
+    flag: {severity: high, recipient_role: study_manager}
+
+  milestone_delayed:
+    summary: >-
+      Under 7 days late: notify the study manager (low). 7 days or more late: flag
+      to the clinical operations lead (high).
+    flag_at_days_late: 7
+    notify: {severity: low, recipient_role: study_manager}
+    flag: {severity: high, recipient_role: clinical_operations_lead}
+
+  approval_received:
+    summary: >-
+      Ethics approval is in. If the site is Identified or Selected, auto-resolve by
+      moving it to Docs In Progress. Otherwise log only.
+    advance_site_status:
+      from: [Identified, Selected]
+      to: Docs In Progress
+
+  contract_signed:
+    summary: >-
+      If the site now passes the readiness check, auto-resolve by setting it to
+      Ready To Activate. Otherwise log only, noting what is still missing.
+
+  site_ready_check:
+    summary: >-
+      If every required document is approved and in date, the contract is signed
+      and no staff GCP training has expired, auto-resolve by setting the site to
+      Ready To Activate. Otherwise notify the study manager (low), listing what is
+      missing.
+    notify_missing: {severity: low, recipient_role: study_manager}
+    on_ready_set_status: Ready To Activate
+
+  record_data_issue:
+    summary: >-
+      If the correct value can be inferred, auto-resolve with fix_record_field: a
+      blank country from the city in the site name (see study://reference), or a
+      parseable date reformatted to YYYY-MM-DD. If it cannot be inferred (for
+      example "TBD" or a blank person's name), notify the data manager (medium).
+    notify: {severity: medium, recipient_role: data_manager}
+    # Formats an agent may safely convert to YYYY-MM-DD. Ambiguous ones such as
+    # 03/04/2026 are deliberately absent.
+    inferable_date_formats: ["%Y/%m/%d", "%Y.%m.%d", "%d %b %Y", "%d %B %Y"]
+
+  staff_training_expired:
+    summary: Always flag to the site coordinator (medium).
+    flag: {severity: medium, recipient_role: site_coordinator}
+
+# What "ready" means for site_ready_check, contract_signed, and the server's
+# guard on update_site_status(..., "Ready To Activate").
+readiness:
+  required_documents:
+    - Ethics/IRB approval
+    - Principal Investigator CV
+    - GCP certificate
+    - Financial disclosure
+    - Clinical trial agreement
+    - Site budget
+    - Lab certification
+  required_milestones_completed: [Ethics Approval, Contract Signed]
+  no_expired_documents: true
+  no_expired_staff_training: true
