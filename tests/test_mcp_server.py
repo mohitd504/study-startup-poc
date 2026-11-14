@@ -118,11 +118,13 @@ async def test_list_site_documents_shows_days_until_expiry(ctx):
 
 @pytest.mark.anyio
 async def test_list_site_milestones_shows_days_late_and_bad_dates(ctx):
+    # Separate sites: on one site the "TBD" could land on the delayed milestone.
     delayed = generate_one(ctx, "milestone_delayed", site_id="SITE-003", days=9)
-    garbage = generate_one(ctx, "record_data_issue", site_id="SITE-003", variant="milestone_date_garbage")
+    garbage = generate_one(ctx, "record_data_issue", site_id="SITE-004", variant="milestone_date_garbage")
     ms = {m["milestone_id"]: m for m in (await call("list_site_milestones", site_id="SITE-003"))["milestones"]}
     assert len(ms) == 7
     assert ms[delayed["payload"]["milestone_id"]]["days_late"] == 9
+    ms = {m["milestone_id"]: m for m in (await call("list_site_milestones", site_id="SITE-004"))["milestones"]}
     assert ms[garbage["payload"]["entity_id"]]["planned_date_valid"] is False
 
 
